@@ -2,9 +2,9 @@ pub mod layers;
 
 use std::cell::RefMut;
 use aws_sdk_s3::Client;
-use regex::Regex;
 use crate::cfg::MavenConfig;
 use crate::storage::layers::Layer;
+use crate::util::is_file_request;
 
 pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &'a mut RefMut<'_, Layer>, request_path: &String) -> Option<&'a Layer> {
 	let path_prefix = request_path.rsplit_once('/').unwrap_or_else(|| { ("", "") }).0;
@@ -27,15 +27,13 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 		return None
 	}
 
-	let file_ext_regex = Regex::new(".+\\.(pom|jar|\\w+)").expect("Failed to build regex for file extensions");
-
 	for obj in content {
 		let key = obj.key.unwrap();
 		let mut splice: Vec<&str> = key.split('/').filter(|it| { !it.is_empty() }).collect();
 		let last = splice.remove(splice.len() - 1);
 		let layer = root_layer.populate(&splice, 0);
 
-		if file_ext_regex.is_match(last) {
+		if is_file_request(last) {
 			layer.files.push(String::from(last));
 			layer.files.dedup()
 		}

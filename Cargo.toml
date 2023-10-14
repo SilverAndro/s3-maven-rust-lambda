@@ -16,3 +16,4 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
 string-builder = "0.2.0"
 regex = { version = "1.10.0", features = ["std"] }
+once_cell = { version = "1.18.0", features = [] }

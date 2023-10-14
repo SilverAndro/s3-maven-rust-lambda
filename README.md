@@ -1,6 +1,6 @@
 # s3 maven rust lambda
 
-rust lambda function that implements a maven repository on top of aws lambda
+rust program that implements a maven repository on top of aws lambda
 and s3 by acting as an on-demand translation layer.
 
 ---

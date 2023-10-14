@@ -1239,6 +1239,7 @@ dependencies = [
  "aws_lambda_events",
  "http",
  "lambda_runtime",
+ "once_cell",
  "regex",
  "serde",
  "serde_json",

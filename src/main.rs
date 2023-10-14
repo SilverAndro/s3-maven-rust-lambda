@@ -1,6 +1,7 @@
 mod storage;
 mod cfg;
 mod responses;
+mod util;
 
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use lambda_runtime::{service_fn, Error, LambdaEvent};
 use crate::responses::build_response::{ResponseBuilder, ErrorResponseBuilder};
 use crate::cfg::MavenConfig;
 use crate::storage::layers::Layer;
+use crate::util::is_file_request;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -45,10 +47,7 @@ async fn handler(
     request_path.remove(0);
 
     // check if this is an index request
-    let is_indexing_request = http_method == Method::GET && !(
-        request_path.ends_with(".jar") ||
-            request_path.ends_with(".pom")
-    );
+    let is_indexing_request = http_method == Method::GET && !is_file_request(&*request_path);
 
     tracing::info!("Handling a request for {request_path} with method {http_method}. Indexing: {is_indexing_request}");
 
