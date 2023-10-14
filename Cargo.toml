@@ -1,0 +1,18 @@
+[package]
+name = "s3_maven_lambda"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+http = "0.2.9"
+aws-config = "0.56.1"
+aws-sdk-s3 = "0.33.0"
+lambda_runtime = "0.8.2"
+aws_lambda_events = { version = "0.11.1", default-features = false, features = ["apigw"] }
+serde = "1.0.136"
+serde_json = "1.0.85"
+tokio = { version = "1", features = ["macros"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
+string-builder = "0.2.0"
+regex = { version = "1.10.0", features = ["std"] }

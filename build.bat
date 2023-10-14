@@ -1,0 +1,1 @@
+cmd /k cargo lambda build --release --output-format zip --arm64
