@@ -49,7 +49,7 @@ async fn handler(
     // check if this is an index request
     let is_indexing_request = http_method == Method::GET && !is_file_request(&*request_path);
 
-    tracing::info!("Handling a request for {request_path} with method {http_method}. Indexing: {is_indexing_request}");
+    tracing::info!("Handling a request for \"{request_path}\" with method {http_method}. Indexing: {is_indexing_request}");
 
     // return an error if we dont allow indexing
     if is_indexing_request && !maven_config.indexing_enabled {
@@ -75,7 +75,7 @@ async fn handler(
 
     // uploading an artifact
     if http_method == Method::PUT {
-
+        event.payload.headers.get("Authorization");
     }
 
     // not an allowed method

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 
 pub struct Layer {
 	children: HashMap<String, Box<Layer>>,
@@ -44,7 +45,7 @@ impl Layer {
 
 		let child = self.children
 			.get(ids[index])
-			.expect("Call to descent requested id that does not exist in the path");
+			.expect(&*format!("Call to descent requested id that does not exist in the path, was looking for {:?}", ids));
 		return child.descend(ids, index + 1)
 	}
 
