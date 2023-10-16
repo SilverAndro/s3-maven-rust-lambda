@@ -85,5 +85,9 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 		}
 	}
 
-	return Some(root_layer.descend(&request_split, 0));
+	if root_layer.has_children(&request_split, 0) {
+		return Some(root_layer.descend(&request_split, 0));
+	} else {
+		return None
+	}
 }

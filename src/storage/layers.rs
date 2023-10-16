@@ -18,7 +18,7 @@ impl Layer {
 
 	pub fn has_children(&self, ids: &Vec<&str>, index: usize) -> bool {
 		if index >= ids.len() {
-			return true
+			return !(self.packages.is_empty() && self.files.is_empty())
 		}
 
 		let has_child = self.children.contains_key(ids[index]);
