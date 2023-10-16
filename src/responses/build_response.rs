@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 use aws_lambda_events::apigw::ApiGatewayProxyResponse;
+use aws_lambda_events::encodings::Body;
 use aws_sdk_s3::Client;
 use http::{HeaderMap, Method};
 use lambda_runtime::Error;
@@ -8,6 +9,7 @@ use crate::cfg::MavenConfig;
 use crate::responses::http_templates;
 use crate::storage;
 use crate::storage::layers::Layer;
+use crate::util::mime_type;
 
 pub struct ErrorResponseBuilder {}
 pub struct ResponseBuilder {}
@@ -41,10 +43,9 @@ impl ErrorResponseBuilder {
 		return Ok(resp)
 	}
 
-	pub fn invalid_index() -> Result<ApiGatewayProxyResponse, Error> {
+	pub fn no_content() -> Result<ApiGatewayProxyResponse, Error> {
 		let mut headers = HeaderMap::new();
 		headers.insert("content-type", "text/html".parse().unwrap());
-		headers.insert("Allow", "".parse().unwrap());
 		let resp = ApiGatewayProxyResponse {
 			status_code: 404,
 			multi_value_headers: headers.clone(),
@@ -61,8 +62,27 @@ impl ResponseBuilder {
 		todo!()
 	}
 
-	pub fn resource(request_path: &String) -> Result<ApiGatewayProxyResponse, Error> {
-		todo!()
+	pub async fn resource(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Result<ApiGatewayProxyResponse, Error> {
+		let resource = storage::get_resource(s3_client, maven_config, request_path).await;
+		return match resource {
+			None => {
+				ErrorResponseBuilder::no_content()
+			}
+
+			Some(bytes) => {
+				let mut headers = HeaderMap::new();
+				let content_type = mime_type(request_path);
+				headers.insert("content-type", content_type.parse().unwrap());
+				let resp = ApiGatewayProxyResponse {
+					status_code: 200,
+					multi_value_headers: headers.clone(),
+					is_base64_encoded: false,
+					body: Some(Body::Binary(bytes.to_vec())),
+					headers,
+				};
+				Ok(resp)
+			}
+		}
 	}
 
 	pub async fn index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &'a Arc<RefCell<Layer>>, request_path: &String) -> Result<ApiGatewayProxyResponse, Error> {
@@ -70,7 +90,7 @@ impl ResponseBuilder {
 		let layer = storage::get_index(s3_client, maven_config, root, request_path).await;
 
 		if layer.is_none() {
-			return ErrorResponseBuilder::invalid_index()
+			return ErrorResponseBuilder::no_content()
 		}
 
 		let mut headers = HeaderMap::new();

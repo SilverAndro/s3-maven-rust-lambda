@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::Display;
 
 pub struct Layer {
 	children: HashMap<String, Box<Layer>>,
@@ -33,7 +32,7 @@ impl Layer {
 		}
 	}
 
-	pub fn get_or_compute_layer(&mut self, id: &str) -> &mut Layer {
+	fn get_or_compute_layer(&mut self, id: &str) -> &mut Layer {
 		return self.children.entry(String::from(id))
 			.or_insert(Box::from(Layer::new()))
 	}
@@ -57,8 +56,7 @@ impl Layer {
 		self.packages.push(String::from(ids[index]));
 		self.packages.dedup();
 
-		let child = self.children.entry(String::from(ids[index]))
-			.or_insert(Box::from(Layer::new()));
+		let child = self.get_or_compute_layer(ids[index]);
 		return child.populate(ids, index + 1)
 	}
 }

@@ -2,19 +2,28 @@ pub mod layers;
 
 use std::cell::RefMut;
 use aws_sdk_s3::Client;
+use aws_sdk_s3::primitives::AggregatedBytes;
 use crate::cfg::MavenConfig;
 use crate::storage::layers::Layer;
 use crate::util::is_file_request;
 
-pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &'a mut RefMut<'_, Layer>, request_path: &String) {
+pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Option<AggregatedBytes> {
 	tracing::info!("Getting object \"{request_path}\"");
 	let obj = s3_client.get_object()
 		.bucket(maven_config.bucket_name)
 		.key(request_path)
 		.send().await;
 
-	if obj.is_err() {
+	return match obj {
+		Err(..) => {
+			None
+		}
 
+		Ok(result) => {
+			let collected = result.body.collect()
+				.await.expect("Failed to collect object bytes");
+			Some(collected)
+		}
 	}
 }
 pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &'a mut RefMut<'_, Layer>, request_path: &String) -> Option<&'a Layer> {

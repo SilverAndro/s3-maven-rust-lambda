@@ -70,7 +70,7 @@ async fn handler(
 
     // requesting an artifact
     if http_method == Method::GET {
-        return ResponseBuilder::resource(&request_path)
+        return ResponseBuilder::resource(s3_client, maven_config, &request_path).await
     }
 
     // uploading an artifact
