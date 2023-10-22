@@ -55,6 +55,33 @@ impl ErrorResponseBuilder {
 		};
 		return Ok(resp)
 	}
+
+	pub fn no_auth() -> Result<ApiGatewayProxyResponse, Error> {
+		let mut headers = HeaderMap::new();
+		headers.insert("content-type", "text/html".parse().unwrap());
+		headers.insert("WWW-Authenticate", "Basic realm=\"Upload Artifact\"".parse().unwrap());
+		let resp = ApiGatewayProxyResponse {
+			status_code: 401,
+			multi_value_headers: headers.clone(),
+			is_base64_encoded: false,
+			body: Some("No authorization provided.".into()),
+			headers,
+		};
+		return Ok(resp)
+	}
+
+	pub fn invalid_auth() -> Result<ApiGatewayProxyResponse, Error> {
+		let mut headers = HeaderMap::new();
+		headers.insert("content-type", "text/html".parse().unwrap());
+		let resp = ApiGatewayProxyResponse {
+			status_code: 404,
+			multi_value_headers: headers.clone(),
+			is_base64_encoded: false,
+			body: Some("Invalid authorization provided.".into()),
+			headers,
+		};
+		return Ok(resp)
+	}
 }
 
 impl ResponseBuilder {
@@ -73,6 +100,7 @@ impl ResponseBuilder {
 				let mut headers = HeaderMap::new();
 				let content_type = mime_type(request_path);
 				headers.insert("content-type", content_type.parse().unwrap());
+				headers.insert("Cache-Control", "public, max-age=86400".parse().unwrap());
 				let resp = ApiGatewayProxyResponse {
 					status_code: 200,
 					multi_value_headers: headers.clone(),
@@ -95,6 +123,7 @@ impl ResponseBuilder {
 
 		let mut headers = HeaderMap::new();
 		headers.insert("content-type", "text/html".parse().unwrap());
+		headers.insert("Cache-Control", "public, max-age=28800".parse().unwrap());
 		let resp = ApiGatewayProxyResponse {
 			status_code: 200,
 			multi_value_headers: headers.clone(),

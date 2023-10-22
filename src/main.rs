@@ -5,9 +5,10 @@ mod util;
 
 use std::cell::RefCell;
 use std::sync::Arc;
-use http::Method;
+use http::{HeaderMap, Method};
 use aws_lambda_events::apigw::{ApiGatewayProxyResponse, ApiGatewayV2httpRequest};
 use aws_sdk_s3::Client;
+use data_encoding::BASE64;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use crate::responses::build_response::{ResponseBuilder, ErrorResponseBuilder};
 use crate::cfg::MavenConfig;
@@ -39,7 +40,7 @@ async fn handler(
     bucket_index: &Arc<RefCell<Layer>>
 ) -> Result<ApiGatewayProxyResponse, Error> {
     // simple access
-    let http_method = event.payload.http_method;
+    let http_method = event.payload.request_context.http.method;
 
     // get a simple string we can work with
     let mut request_path = event.payload.raw_path.unwrap_or_else(|| { String::from("/") });
@@ -75,7 +76,41 @@ async fn handler(
 
     // uploading an artifact
     if http_method == Method::PUT {
-        event.payload.headers.get("Authorization");
+        let auth_header = event.payload.headers.get("Authorization");
+        return match auth_header {
+            None => { ErrorResponseBuilder::no_auth() }
+            Some(encoded) => {
+                // includes "Basic " prefix so skip that
+                let skip = "Basic ".len();
+                let extracted = &encoded.as_bytes()[skip..];
+                let decoded = BASE64.decode(extracted);
+                match decoded {
+                    Err(err) => {
+                        tracing::warn!("Failed to decode {err}");
+                        ErrorResponseBuilder::invalid_auth()
+                    }
+                    Ok(value) => {
+                        let decoded_str = String::from_utf8(value)
+                            .unwrap_or(String::from("invalid:invalid"));
+                        if !decoded_str.contains(':') { return ErrorResponseBuilder::invalid_auth() }
+
+                        let (username, password) = decoded_str.rsplit_once(':')
+                            .expect("Failed to split after checking delimiter exists");
+
+                        let mut headers = HeaderMap::new();
+                        headers.insert("content-type", "text/html".parse().unwrap());
+                        let resp = ApiGatewayProxyResponse {
+                            status_code: 200,
+                            multi_value_headers: headers.clone(),
+                            is_base64_encoded: false,
+                            body: Some(format!("Username: {username}<br />Password: {password}").into()),
+                            headers,
+                        };
+                        Ok(resp)
+                    }
+                }
+            }
+        }
     }
 
     // not an allowed method
