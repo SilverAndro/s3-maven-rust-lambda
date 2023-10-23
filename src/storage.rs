@@ -1,9 +1,10 @@
 pub mod layers;
 
-use std::sync::MutexGuard;
+use std::sync::{Arc, Mutex};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::operation::get_object::GetObjectOutput;
 use http::Response;
+use lambda_http::Body;
 use lambda_runtime::Error;
 use crate::cfg::MavenConfig;
 use crate::responses::build_response::{ErrorResponseBuilder, ResponseBuilder};
@@ -27,7 +28,8 @@ pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, req
 		}
 	}
 }
-pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, mut root_layer: MutexGuard<'a, Layer>, request_path: &String) -> Option<Layer> {
+pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer_holder: &Arc<Mutex<Layer>>, request_path: &String) -> Option<Layer> {
+	let mut root_layer = root_layer_holder.lock().unwrap();
 	let path_prefix = request_path.rsplit_once('/').unwrap_or_else(|| { ("", "") }).0;
 	let request_split: Vec<&str> = request_path.split('/').filter(|it| { !it.is_empty() }).collect();
 
@@ -93,7 +95,7 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, mut ro
 	}
 }
 
-pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String) -> Result<Response<Vec<u8>>, Error> {
+pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String) -> Result<Response<Body>, Error> {
 	let result = s3_client.put_object()
 		.bucket(maven_config.bucket_name)
 		.key(key)

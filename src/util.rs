@@ -1,4 +1,4 @@
-use lambda_http::Response;
+use lambda_http::{Body, Response};
 use lambda_runtime::Error;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -24,20 +24,20 @@ pub fn mime_type(resource_path: &str) -> String {
 	}
 }
 
-pub fn simple_response(status_code: u16, msg: &str) -> Result<Response<Vec<u8>>, Error> {
+pub fn simple_response(status_code: u16, msg: &str) -> Result<Response<Body>, Error> {
 	let resp = Response::builder()
 		.status(status_code)
 		.header("content-type", "text/html")
-		.body(msg.as_bytes().to_vec())
+		.body(Body::Text(String::from(msg)))
 		.map_err(Box::new)?;
 	return Ok(resp)
 }
 
-pub fn simple_response_fmt(status_code: u16, msg: String) -> Result<Response<Vec<u8>>, Error> {
+pub fn simple_response_fmt(status_code: u16, msg: String) -> Result<Response<Body>, Error> {
 	let resp = Response::builder()
 		.status(status_code)
 		.header("content-type", "text/html")
-		.body(msg.as_bytes().to_vec())
+		.body(Body::Text(msg))
 		.map_err(Box::new)?;
 	return Ok(resp)
 }

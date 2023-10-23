@@ -8,7 +8,7 @@ use http::{Method, Response};
 use aws_sdk_s3::Client;
 use data_encoding::BASE64;
 use lambda_http::request::RequestContext;
-use lambda_http::{Request, RequestExt};
+use lambda_http::{Body, Request, RequestExt};
 use lambda_runtime::{service_fn, Error};
 use crate::responses::build_response::{ResponseBuilder, ErrorResponseBuilder};
 use crate::cfg::MavenConfig;
@@ -26,10 +26,10 @@ async fn main() -> Result<(), Error> {
     let config = aws_config::load_from_env().await;
     let s3_client = Client::new(&config);
     let root_layer: Arc<Mutex<Layer>> = Arc::new(Mutex::new(Layer::new()));
-
+    
     // need to curry together a proper invocation
     lambda_http::run(service_fn(|event| {
-        Ok(handler(event, MavenConfig::new(), &s3_client, &root_layer))
+        handler(event, MavenConfig::new(), &s3_client, &root_layer)
     })).await
 }
 
@@ -38,7 +38,7 @@ async fn handler(
     maven_config: MavenConfig,
     s3_client: &Client,
     bucket_index: &Arc<Mutex<Layer>>
-) -> Response<Vec<u8>> {
+) -> Result<Response<Body>, Error> {
     let raw_context = event.request_context();
 
     match raw_context {
@@ -61,33 +61,33 @@ async fn handler(
 
             // return an error if we dont allow indexing
             if is_indexing_request && !maven_config.indexing_enabled {
-                return ErrorResponseBuilder::no_index_allowed().unwrap()
+                return ErrorResponseBuilder::no_index_allowed()
             }
 
             // build and return an index
             if is_indexing_request {
-                return ResponseBuilder::index(s3_client, maven_config, bucket_index, &request_path).await.unwrap()
+                return ResponseBuilder::index(s3_client, maven_config, bucket_index, &request_path).await
             }
 
             // just generate the headers for the request
             // cloudflare converts these to GET requests but
             // no reason we cant add support here
             if http_method == Method::HEAD {
-                return ResponseBuilder::resource_head(s3_client, maven_config, &request_path).await.unwrap()
+                return ResponseBuilder::resource_head(s3_client, maven_config, &request_path).await
             }
 
             // requesting an artifact
             if http_method == Method::GET {
-                return ResponseBuilder::resource(s3_client, maven_config, &request_path).await.unwrap()
+                return ResponseBuilder::resource(s3_client, maven_config, &request_path).await
             }
 
             // uploading an artifact
             if http_method == Method::PUT {
-                if request_path.is_empty() { return ErrorResponseBuilder::invalid_request().unwrap() }
+                if request_path.is_empty() { return ErrorResponseBuilder::invalid_request() }
 
                 let auth_header = event.headers().get("Authorization");
                 return match auth_header {
-                    None => { ErrorResponseBuilder::no_auth().unwrap() }
+                    None => { ErrorResponseBuilder::no_auth() }
                     Some(encoded) => {
                         let skip = "Basic ".len();
                         let extracted = &encoded.as_bytes()[skip..];
@@ -95,35 +95,35 @@ async fn handler(
                         match decoded {
                             Err(err) => {
                                 tracing::warn!("Failed to decode {err}");
-                                ErrorResponseBuilder::invalid_auth().unwrap()
+                                ErrorResponseBuilder::invalid_auth()
                             }
                             Ok(value) => {
                                 let decoded_str = String::from_utf8(value)
                                     .unwrap_or(String::from("invalid:invalid"));
-                                if !decoded_str.contains(':') { return ErrorResponseBuilder::invalid_auth().unwrap() }
+                                if !decoded_str.contains(':') { return ErrorResponseBuilder::invalid_auth() }
 
                                 let (username, password) = decoded_str.rsplit_once(':')
                                     .expect("Failed to split after checking delimiter exists");
 
                                 if username != maven_config.username || password != maven_config.password {
-                                    return ErrorResponseBuilder::invalid_auth().unwrap()
+                                    return ErrorResponseBuilder::invalid_auth()
                                 }
 
                                 let size_header = event.headers().get("content-length");
                                 let size: i64 = match size_header {
-                                    None => { return ErrorResponseBuilder::invalid_content_length().unwrap() }
+                                    None => { return ErrorResponseBuilder::invalid_content_length() }
                                     Some(data) => {
                                         let length = data.to_str();
                                         match length {
-                                            Err(_) => { return ErrorResponseBuilder::invalid_content_length().unwrap() }
+                                            Err(_) => { return ErrorResponseBuilder::invalid_content_length() }
                                             Ok(data) => { data.parse().unwrap() }
                                         }
                                     }
                                 };
 
-                                if size > maven_config.max_artifact_size { return ErrorResponseBuilder::too_large(&maven_config).unwrap() }
+                                if size > maven_config.max_artifact_size { return ErrorResponseBuilder::too_large(&maven_config) }
 
-                                return storage::upload_artifact(s3_client, maven_config, &request_path).await.unwrap()
+                                return storage::upload_artifact(s3_client, maven_config, &request_path).await
                             }
                         }
                     }
@@ -131,7 +131,7 @@ async fn handler(
             }
 
             // not an allowed method
-            return ErrorResponseBuilder::invalid_request_method(http_method).unwrap()
+            return ErrorResponseBuilder::invalid_request_method(http_method)
         }
     }
 }
