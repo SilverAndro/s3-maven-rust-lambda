@@ -60,3 +60,13 @@ impl Layer {
 		return child.populate(ids, index + 1)
 	}
 }
+
+impl Clone for Layer {
+	fn clone(&self) -> Self {
+		return Layer {
+			children: Default::default(),
+			packages: self.packages.clone(),
+			files: self.files.clone(),
+		}
+	}
+}

@@ -1,13 +1,16 @@
 pub mod layers;
 
-use std::cell::RefMut;
+use std::sync::MutexGuard;
 use aws_sdk_s3::Client;
-use aws_sdk_s3::primitives::AggregatedBytes;
+use aws_sdk_s3::operation::get_object::GetObjectOutput;
+use http::Response;
+use lambda_runtime::Error;
 use crate::cfg::MavenConfig;
+use crate::responses::build_response::{ErrorResponseBuilder, ResponseBuilder};
 use crate::storage::layers::Layer;
 use crate::util::is_file_request;
 
-pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Option<AggregatedBytes> {
+pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Option<GetObjectOutput> {
 	tracing::info!("Getting object \"{request_path}\"");
 	let obj = s3_client.get_object()
 		.bucket(maven_config.bucket_name)
@@ -20,19 +23,17 @@ pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, req
 		}
 
 		Ok(result) => {
-			let collected = result.body.collect()
-				.await.expect("Failed to collect object bytes");
-			Some(collected)
+			Some(result)
 		}
 	}
 }
-pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &'a mut RefMut<'_, Layer>, request_path: &String) -> Option<&'a Layer> {
+pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, mut root_layer: MutexGuard<'a, Layer>, request_path: &String) -> Option<Layer> {
 	let path_prefix = request_path.rsplit_once('/').unwrap_or_else(|| { ("", "") }).0;
 	let request_split: Vec<&str> = request_path.split('/').filter(|it| { !it.is_empty() }).collect();
 
 	if !request_split.is_empty() && root_layer.has_children(&request_split, 0) {
 		tracing::info!("Index for \"{path_prefix}\" already exists, returning our cache");
-		return Some(root_layer.descend(&request_split, 0));
+		return Some(root_layer.descend(&request_split, 0).clone());
 	}
 
 	tracing::info!("Getting index for \"{path_prefix}\"");
@@ -86,8 +87,26 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 	}
 
 	if root_layer.has_children(&request_split, 0) {
-		return Some(root_layer.descend(&request_split, 0));
+		return Some(root_layer.descend(&request_split, 0).clone());
 	} else {
 		return None
+	}
+}
+
+pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String) -> Result<Response<Vec<u8>>, Error> {
+	let result = s3_client.put_object()
+		.bucket(maven_config.bucket_name)
+		.key(key)
+		.send().await;
+
+	match result {
+		Ok(_) => {
+			tracing::info!("Successfully uploaded artifact to {key}");
+			ResponseBuilder::uploaded_artifact()
+		}
+		Err(err) => {
+			tracing::error!("Failed to upload artifact to {key}. {err}");
+			ErrorResponseBuilder::server_error("Failed to upload artifact. Contact the maven owner for details")
+		}
 	}
 }
