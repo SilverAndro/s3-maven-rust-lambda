@@ -18,7 +18,7 @@ pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, req
 		.key(request_path)
 		.send().await;
 
-	return match obj {
+	match obj {
 		Err(..) => {
 			None
 		}
@@ -28,14 +28,18 @@ pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, req
 		}
 	}
 }
-pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer_holder: &Arc<Mutex<Layer>>, request_path: &String) -> Option<Layer> {
-	let mut root_layer = root_layer_holder.lock().unwrap();
-	let path_prefix = request_path.rsplit_once('/').unwrap_or_else(|| { ("", "") }).0;
+
+pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer_holder: &Arc<Mutex<Layer>>, request_path: &str) -> Option<Layer> {
+	let path_prefix = request_path.rsplit_once('/').unwrap_or(("", "")).0;
 	let request_split: Vec<&str> = request_path.split('/').filter(|it| { !it.is_empty() }).collect();
 
-	if !request_split.is_empty() && root_layer.has_children(&request_split, 0) {
-		tracing::info!("Index for \"{path_prefix}\" already exists, returning our cache");
-		return Some(root_layer.descend(&request_split, 0).clone());
+	{
+		let root_layer = root_layer_holder.lock().unwrap();
+		if !request_split.is_empty() && root_layer.has_children(&request_split, 0) {
+			tracing::info!("Index for \"{path_prefix}\" already exists, returning our cache");
+			return Some(root_layer.descend(&request_split, 0).clone());
+		}
+		drop(root_layer);
 	}
 
 	tracing::info!("Getting index for \"{path_prefix}\"");
@@ -55,11 +59,13 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 			return None
 		}
 
+		let mut root_layer = root_layer_holder.lock().unwrap();
 		for obj in prefixes {
 			let key = obj.prefix.unwrap();
 			let splice: Vec<&str> = key.split('/').filter(|it| { !it.is_empty() }).collect();
 			root_layer.populate(&splice, 0);
 		}
+		drop(root_layer)
 	} else {
 		let list = s3_client.list_objects_v2()
 			.bucket(maven_config.bucket_name)
@@ -75,6 +81,7 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 			return None
 		}
 
+		let mut root_layer = root_layer_holder.lock().unwrap();
 		for obj in content {
 			let key = obj.key.unwrap();
 			let mut splice: Vec<&str> = key.split('/').filter(|it| { !it.is_empty() }).collect();
@@ -86,12 +93,14 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 				layer.files.dedup()
 			}
 		}
+		drop(root_layer)
 	}
 
-	if root_layer.has_children(&request_split, 0) {
-		return Some(root_layer.descend(&request_split, 0).clone());
+	let root_layer = root_layer_holder.lock().unwrap();
+	return if root_layer.has_children(&request_split, 0) {
+		Some(root_layer.descend(&request_split, 0).clone())
 	} else {
-		return None
+		None
 	}
 }
 

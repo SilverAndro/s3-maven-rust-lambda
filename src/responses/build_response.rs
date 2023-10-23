@@ -15,15 +15,15 @@ pub struct ResponseBuilder {}
 
 impl ErrorResponseBuilder {
 	pub fn server_error(message: &str) -> Result<Response<Body>, Error> {
-		return simple_response(500, message)
+		simple_response(500, message)
 	}
 
 	pub fn invalid_request() -> Result<Response<Body>, Error> {
-		return simple_response(400, "Invalid request.");
+		simple_response(400, "Invalid request.")
 	}
 
 	pub fn invalid_request_method(http_method: Method) -> Result<Response<Body>, Error> {
-		return simple_response_fmt(400, format!("Method {http_method} not supported."));
+		simple_response_fmt(400, format!("Method {http_method} not supported."))
 	}
 
 	pub fn no_index_allowed() -> Result<Response<Body>, Error> {
@@ -33,11 +33,11 @@ impl ErrorResponseBuilder {
 			.header("Allow", "")
 			.body(Body::Text(String::from("Indexing is not enabled for this repository.")))
 			.map_err(Box::new)?;
-		return Ok(resp)
+		Ok(resp)
 	}
 
 	pub fn no_content() -> Result<Response<Body>, Error> {
-		return simple_response(404, "No content found.")
+		simple_response(404, "No content found.")
 	}
 
 	pub fn no_content_bytes() -> Result<Response<Body>, Error> {
@@ -46,7 +46,7 @@ impl ErrorResponseBuilder {
 			.header("content-type", "text/html")
 			.body(Body::Empty)
 			.map_err(Box::new)?;
-		return Ok(resp)
+		Ok(resp)
 	}
 
 	pub fn no_auth() -> Result<Response<Body>, Error> {
@@ -56,19 +56,19 @@ impl ErrorResponseBuilder {
 			.header("WWW-Authenticate", "Basic realm=\"Upload Artifact\"")
 			.body(Body::Text(String::from("No authorization provided.")))
 			.map_err(Box::new)?;
-		return Ok(resp)
+		Ok(resp)
 	}
 
 	pub fn invalid_auth() -> Result<Response<Body>, Error> {
-		return simple_response(403, "Invalid authorization provided.")
+		simple_response(403, "Invalid authorization provided.")
 	}
 
 	pub fn invalid_content_length() -> Result<Response<Body>, Error> {
-		return simple_response(411, "No content-length provided.")
+		simple_response(411, "No content-length provided.")
 	}
 
 	pub fn too_large(maven_config: &MavenConfig) -> Result<Response<Body>, Error> {
-		return simple_response_fmt(413, format!("Artifact too large. Max size: {}", maven_config.max_artifact_size))
+		simple_response_fmt(413, format!("Artifact too large. Max size: {}", maven_config.max_artifact_size))
 	}
 }
 
@@ -80,7 +80,7 @@ impl ResponseBuilder {
 			.key(request_path)
 			.send().await;
 
-		return match obj {
+		match obj {
 			Err(_) => { ErrorResponseBuilder::no_content() }
 			Ok(data) => {
 				let content_type = mime_type(request_path);
@@ -93,14 +93,14 @@ impl ResponseBuilder {
 					.header("Content-Length", data.content_length)
 					.body(Body::Empty)
 					.map_err(Box::new)?;
-				return Ok(resp)
+				Ok(resp)
 			}
 		}
 	}
 
 	pub async fn resource(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Result<Response<Body>, Error> {
 		let resource = storage::get_resource(s3_client, maven_config, request_path).await;
-		return match resource {
+		match resource {
 			None => {
 				ErrorResponseBuilder::no_content_bytes()
 			}
@@ -117,12 +117,12 @@ impl ResponseBuilder {
 					.header("Content-Length", data.content_length)
 					.body(Body::Binary(bytes.to_vec()))
 					.map_err(Box::new)?;
-				return Ok(resp)
+				Ok(resp)
 			}
 		}
 	}
 
-	pub async fn index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &Arc<Mutex<Layer>>, request_path: &String) -> Result<Response<Body>, Error> {
+	pub async fn index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer: &Arc<Mutex<Layer>>, request_path: &str) -> Result<Response<Body>, Error> {
 		let layer = storage::get_index(s3_client, maven_config, root_layer, request_path).await;
 
 		if layer.is_none() {
@@ -137,7 +137,7 @@ impl ResponseBuilder {
 				&request_path.split('/').filter(|it| { !it.is_empty() }).collect(),
 				&layer.unwrap())))
 			.map_err(Box::new)?;
-		return Ok(resp)
+		Ok(resp)
 	}
 
 	pub fn uploaded_artifact() -> Result<Response<Body>, Error> {
@@ -145,6 +145,6 @@ impl ResponseBuilder {
 			.status(201)
 			.body(Body::Empty)
 			.map_err(Box::new)?;
-		return Ok(resp)
+		Ok(resp)
 	}
 }
