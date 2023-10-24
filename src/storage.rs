@@ -3,6 +3,8 @@ pub mod layers;
 use std::sync::{Arc, Mutex};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::operation::get_object::GetObjectOutput;
+use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::types::Object;
 use http::Response;
 use lambda_http::Body;
 use lambda_runtime::Error;
@@ -74,7 +76,10 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 			.send().await
 			.expect("Failed to get bucket contents, did you setup the permissions properly?");
 
-		let content = list.contents.expect("Did not receive contents from bucket");
+		let content: Vec<Object> = match list.contents {
+			None => {Vec::new()}
+			Some(bucket_content) => { bucket_content }
+		};
 
 		if content.is_empty() {
 			tracing::info!("Found no content");
@@ -104,10 +109,11 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 	}
 }
 
-pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String) -> Result<Response<Body>, Error> {
+pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String, body: &Body) -> Result<Response<Body>, Error> {
 	let result = s3_client.put_object()
 		.bucket(maven_config.bucket_name)
 		.key(key)
+		.body(ByteStream::from(body.to_vec()))
 		.send().await;
 
 	match result {

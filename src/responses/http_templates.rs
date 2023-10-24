@@ -28,7 +28,7 @@ pub fn build_index(req_slice: &Vec<&str>, layer: &Layer) -> String {
 		builder.append("		<h3>Files:</h3>\n");
 		builder.append("		<ul>\n");
 		for file in &layer.files {
-			builder.append(format!("			<li><a href=\"./{file}\">{file}</a></li>\n"))
+			builder.append(format!("			<li><a href=\"./{file}\" download>{file}</a></li>\n"))
 		}
 		builder.append("		</ul>\n");
 	}

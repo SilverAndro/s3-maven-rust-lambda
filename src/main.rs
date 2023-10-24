@@ -53,6 +53,11 @@ async fn handler(
             let mut request_path = String::from(event.raw_http_path());
             // remove first slash
             request_path.remove(0);
+            // remove stage prefix
+            request_path = match context.stage {
+                None => { request_path }
+                Some(stage) => { String::from(request_path.trim_start_matches(format!("{stage}/").as_str())) }
+            };
 
             // check if this is an index request
             let is_indexing_request = http_method == Method::GET && !is_file_request(&*request_path);
@@ -100,12 +105,16 @@ async fn handler(
                             Ok(value) => {
                                 let decoded_str = String::from_utf8(value)
                                     .unwrap_or(String::from("invalid:invalid"));
-                                if !decoded_str.contains(':') { return ErrorResponseBuilder::invalid_auth() }
+                                if !decoded_str.contains(':') {
+                                    tracing::info!("User tried to authenticate with {decoded_str}, which is not a valid format");
+                                    return ErrorResponseBuilder::invalid_auth()
+                                }
 
                                 let (username, password) = decoded_str.rsplit_once(':')
                                     .expect("Failed to split after checking delimiter exists");
 
                                 if username != maven_config.username || password != maven_config.password {
+                                    tracing::info!("User tried to authenticate with {username} and {password}, which is incorrect.");
                                     return ErrorResponseBuilder::invalid_auth()
                                 }
 
@@ -123,7 +132,7 @@ async fn handler(
 
                                 if size > maven_config.max_artifact_size { return ErrorResponseBuilder::too_large(&maven_config) }
 
-                                return storage::upload_artifact(s3_client, maven_config, &request_path).await
+                                return storage::upload_artifact(s3_client, maven_config, &request_path, event.body()).await
                             }
                         }
                     }
