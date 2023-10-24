@@ -60,7 +60,7 @@ async fn handler(
             };
 
             // check if this is an index request
-            let is_indexing_request = http_method == Method::GET && !is_file_request(&*request_path);
+            let is_indexing_request = http_method == Method::GET && !is_file_request(&request_path);
 
             tracing::info!("Handling a request for \"{request_path}\" with method {http_method}. Indexing: {is_indexing_request}");
 
@@ -140,7 +140,7 @@ async fn handler(
             }
 
             // not an allowed method
-            return ErrorResponseBuilder::invalid_request_method(http_method)
+            ErrorResponseBuilder::invalid_request_method(http_method)
         }
     }
 }

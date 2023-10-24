@@ -11,6 +11,7 @@ pub fn build_index(req_slice: &Vec<&str>, layer: &Layer) -> String {
 	builder.append(format!("		<meta property=\"og:description\" content=\"An index of {full_path} on the maven\">\n"));
 	builder.append("		<meta property=\"og:image\" content=\"https://www.silverandro.dev/site_image.png\">\n");
 	builder.append("		<meta name=\"theme-color\" content=\"#B00B69\">\n");
+	builder.append("		<link rel=\"icon\" type=\"image/x-icon\" href=\"https://silverandro.dev/favicon.ico\">");
 	builder.append("	</head>\n");
 	builder.append("	<body>\n");
 	builder.append(format!("		<h1>Index of {full_path}</h1>\n"));

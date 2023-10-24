@@ -88,7 +88,7 @@ impl ResponseBuilder {
 				let resp = Response::builder()
 					.status(200)
 					.header("content-type", content_type)
-					.header("Cache-Control", "public, max-age=86400")
+					.header("Cache-Control", "public, max-age=259200")
 					.header("Last-Modified", data.last_modified.unwrap().fmt(DateTimeFormat::HttpDate).unwrap())
 					.header("Content-Length", data.content_length)
 					.body(Body::Empty)
@@ -112,7 +112,7 @@ impl ResponseBuilder {
 				let resp = Response::builder()
 					.status(200)
 					.header("content-type", content_type)
-					.header("Cache-Control", "public, max-age=86400")
+					.header("Cache-Control", "public, max-age=259200")
 					.header("Last-Modified", data.last_modified.unwrap().fmt(DateTimeFormat::HttpDate).unwrap())
 					.header("Content-Length", data.content_length)
 					.body(Body::Binary(bytes.to_vec()))
@@ -132,7 +132,7 @@ impl ResponseBuilder {
 		let resp = Response::builder()
 			.status(200)
 			.header("content-type", "text/html")
-			.header("Cache-Control", "public, max-age=28800")
+			.header("Cache-Control", "public, max-age=43200")
 			.body(Body::Text(http_templates::build_index(
 				&request_path.split('/').filter(|it| { !it.is_empty() }).collect(),
 				&layer.unwrap())))
