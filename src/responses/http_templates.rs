@@ -36,5 +36,5 @@ pub fn build_index(req_slice: &Vec<&str>, layer: &Layer) -> String {
 
 	builder.append("	  </body>\n");
 	builder.append("</html>\n");
-	return builder.string().unwrap()
+	builder.string().unwrap()
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+// Acts like a tree like structure
 pub struct Layer {
 	children: HashMap<String, Box<Layer>>,
 
@@ -9,7 +10,7 @@ pub struct Layer {
 
 impl Layer {
 	pub fn new() -> Layer {
-		return Layer {
+		Layer {
 			children: HashMap::new(),
 			packages: Vec::new(),
 			files: Vec::new()
@@ -44,7 +45,7 @@ impl Layer {
 
 		let child = self.children
 			.get(ids[index])
-			.expect(&*format!("Call to descent requested id that does not exist in the path, was looking for {:?}", ids));
+			.unwrap_or_else(|| panic!("Call to descent requested id that does not exist in the path, was looking for {:?}", ids));
 		return child.descend(ids, index + 1)
 	}
 
@@ -61,9 +62,11 @@ impl Layer {
 	}
 }
 
+// Awful hack, but we only ever copy when building a specific layer, so we just return an empty vec
+// of child layers to avoid issues
 impl Clone for Layer {
 	fn clone(&self) -> Self {
-		return Layer {
+		Layer {
 			children: Default::default(),
 			packages: self.packages.clone(),
 			files: self.files.clone(),

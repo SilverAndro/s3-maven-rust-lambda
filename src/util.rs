@@ -3,11 +3,14 @@ use lambda_runtime::Error;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+// Checks if a path seems to be a request for a file, by checking if the end of the path is an extension
 pub fn is_file_request(haystack: &str) -> bool {
 	static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r".+\.(pom|jar|\w+)").unwrap());
 	!haystack.ends_with('/') && RE.is_match(haystack)
 }
 
+// Gets the mime type of the file name
+// Cant just use the mime-type crate because it doesnt support `pom` as xml
 pub fn mime_type(resource_path: &str) -> String {
 	let split = resource_path.rsplit_once('.');
 	match split {

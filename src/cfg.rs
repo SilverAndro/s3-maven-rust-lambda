@@ -12,7 +12,7 @@ pub struct MavenConfig {
 
 impl MavenConfig {
 	pub fn new() -> MavenConfig {
-		return MavenConfig {
+		MavenConfig {
 			bucket_name: std::env::var("BUCKET_NAME")
 				.expect("A BUCKET_NAME must be set in this app's Lambda environment variables."),
 
