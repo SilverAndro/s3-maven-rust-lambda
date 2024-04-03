@@ -25,7 +25,7 @@ impl MavenConfig {
 
 			max_artifact_size: std::env::var("MAX_ARTIFACT_SIZE")
 				.unwrap_or_else(|_| { String::from("5900000") })
-				.parse().expect("Failed to read i64 from environment variable INDEXING_MAX_KEYS."),
+				.parse().expect("Failed to read i64 from environment variable MAX_ARTIFACT_SIZE."),
 
 			username: std::env::var("UPLOAD_USERNAME")
 				.expect("Failed to get username from UPLOAD_USERNAME for uploading artifacts."),
