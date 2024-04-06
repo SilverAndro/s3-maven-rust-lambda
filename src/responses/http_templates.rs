@@ -1,5 +1,6 @@
 use crate::storage::layers::Layer;
 
+// Could probably be refactored out to a proper .html template at some point
 pub fn build_index(req_slice: &Vec<&str>, layer: &Layer) -> String {
 	let full_path = req_slice.join("/") + "/";
 	let mut builder = string_builder::Builder::new(512);

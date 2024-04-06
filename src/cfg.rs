@@ -23,10 +23,14 @@ impl MavenConfig {
 				.unwrap_or_else(|_| { String::from("1000") })
 				.parse().expect("Failed to read i32 from environment variable INDEXING_MAX_KEYS."),
 
+			// We can only serve files <6MB in size from a lambda without streaming (not implemented)
+			// so avoid allowing uploading anything that violates the size restriction
 			max_artifact_size: std::env::var("MAX_ARTIFACT_SIZE")
 				.unwrap_or_else(|_| { String::from("5900000") })
 				.parse().expect("Failed to read i64 from environment variable MAX_ARTIFACT_SIZE."),
 
+			// Realistically these should be in AWS Secrets and not env variables, but theres no SDK for
+			// AWS Secrets yet, and i dont have strict security requirements
 			username: std::env::var("UPLOAD_USERNAME")
 				.expect("Failed to get username from UPLOAD_USERNAME for uploading artifacts."),
 			password: std::env::var("UPLOAD_PASSWORD")

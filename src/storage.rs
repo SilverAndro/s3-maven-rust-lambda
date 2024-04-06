@@ -13,6 +13,7 @@ use crate::responses::build_response::{ErrorResponseBuilder, ResponseBuilder};
 use crate::storage::layers::Layer;
 use crate::util::is_file_request;
 
+// Requests a file from s3 and returns it
 pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, request_path: &String) -> Option<GetObjectOutput> {
 	tracing::info!("Getting object \"{request_path}\"");
 	let obj = s3_client.get_object()
@@ -31,6 +32,8 @@ pub async fn get_resource<'a>(s3_client: &Client, maven_config: MavenConfig, req
 	}
 }
 
+// Builds an index using the "prefix" property of s3 indexing queries
+// Technically this could break if we have >1k entries under a prefix but that seems unlikely!
 pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_layer_holder: &Arc<Mutex<Layer>>, request_path: &str) -> Option<Layer> {
 	let path_prefix = request_path.rsplit_once('/').unwrap_or(("", "")).0;
 	let request_split: Vec<&str> = request_path.split('/').filter(|it| { !it.is_empty() }).collect();
@@ -109,6 +112,8 @@ pub async fn get_index<'a>(s3_client: &Client, maven_config: MavenConfig, root_l
 	}
 }
 
+// Puts a file into s3
+// Index is essentially rebuilt on each request already so pushing it wouldn't help at this scale
 pub async fn upload_artifact(s3_client: &Client, maven_config: MavenConfig, key: &String, body: &Body) -> Result<Response<Body>, Error> {
 	let result = s3_client.put_object()
 		.bucket(maven_config.bucket_name)

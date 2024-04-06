@@ -11,6 +11,7 @@ pub fn is_file_request(haystack: &str) -> bool {
 
 // Gets the mime type of the file name
 // Cant just use the mime-type crate because it doesnt support `pom` as xml
+// Could probably set it up as a backup but this is a maven, not a file host
 pub fn mime_type(resource_path: &str) -> String {
 	let split = resource_path.rsplit_once('.');
 	match split {

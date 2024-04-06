@@ -14,7 +14,7 @@ pub struct ErrorResponseBuilder {}
 pub struct ResponseBuilder {}
 
 // I originally did this because it made more sense to my OOP brain but somehow it breaks the
-// lambda_http::run in main if you try to move these out so ???????
+// lambda_http::run in main if you try to move these out so they sit in an empty impl
 impl ErrorResponseBuilder {
 	pub fn server_error(message: &str) -> Result<Response<Body>, Error> {
 		simple_response(500, message)

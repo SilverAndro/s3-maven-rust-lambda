@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-// Acts like a tree like structure
+// Acts like a tree like structure, where each layer has a named list of child layers
+// Important to note you cant move back up the tree, the full path is usually passed along when required
 pub struct Layer {
 	children: HashMap<String, Box<Layer>>,
 
@@ -64,6 +65,7 @@ impl Layer {
 
 // Awful hack, but we only ever copy when building a specific layer, so we just return an empty vec
 // of child layers to avoid issues
+// Since AWS charges per KB of memory used on lambda, this might even save some money
 impl Clone for Layer {
 	fn clone(&self) -> Self {
 		Layer {

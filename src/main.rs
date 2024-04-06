@@ -28,6 +28,8 @@ async fn main() -> Result<(), Error> {
     let root_layer: Arc<Mutex<Layer>> = Arc::new(Mutex::new(Layer::new()));
     
     // need to curry together a proper invocation
+    // result of what i understand is a strange restriction in the SDK about what
+    // specific types of captures can be passed to the lambda service
     lambda_http::run(service_fn(|event| {
         handler(event, MavenConfig::new(), &s3_client, &root_layer)
     })).await
@@ -42,16 +44,17 @@ async fn handler(
     let raw_context = event.request_context();
 
     match raw_context {
+        // We'll only ever connect over the new gateway system, so just panic if its not that
         RequestContext::ApiGatewayV1(_) => { panic!("Cannot handle api v1") }
         RequestContext::Alb(_) => { panic!("Cannot handle alb") }
         RequestContext::WebSocket(_) => { panic!("Cannot handle websocket") }
         RequestContext::ApiGatewayV2(context) => {
-            // simple access
+            // saved access, there's a different, significantly less useful http_method around we want to avoid
             let http_method = context.http.method;
 
             // get a simple string we can work with
             let mut request_path = String::from(event.raw_http_path());
-            // remove first slash
+            // remove first slash, always present as far as I can tell
             request_path.remove(0);
             // remove stage prefix
             request_path = match context.stage {
@@ -90,6 +93,7 @@ async fn handler(
             if http_method == Method::PUT {
                 if request_path.is_empty() { return ErrorResponseBuilder::invalid_request() }
 
+                // verify the authorization
                 let auth_header = event.headers().get("Authorization");
                 return match auth_header {
                     None => { ErrorResponseBuilder::no_auth() }
@@ -102,6 +106,7 @@ async fn handler(
                                 tracing::warn!("Failed to decode {err}");
                                 ErrorResponseBuilder::invalid_auth()
                             }
+                            // Unpacks it with lots of error handling
                             Ok(value) => {
                                 let decoded_str = String::from_utf8(value)
                                     .unwrap_or(String::from("invalid:invalid"));
